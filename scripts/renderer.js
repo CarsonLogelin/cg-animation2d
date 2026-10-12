@@ -1,4 +1,5 @@
 import * as CG from './transforms.js';
+import { Matrix } from "./matrix.js";
 
 class Renderer {
     // canvas:              object ({id: __, width: __, height: __})
@@ -14,21 +15,57 @@ class Renderer {
         this.fps = fps;
         this.start_time = null;
         this.prev_time = null;
-
+        this.xvelocity = 1;
+        this.yvelocity = .5;
+        this.position = { x: 0, y: 0 };
+        this.color = [65, 105, 255, 255];
         this.models = {
             slide0: [
-                // example model (diamond) -> should be replaced with actual model
+
                 {
-                    vertices: [
-                        CG.Vector3(400, 150, 1),
-                        CG.Vector3(500, 300, 1),
-                        CG.Vector3(400, 450, 1),
-                        CG.Vector3(300, 300, 1)
-                    ],
-                    transform: null
-                }
-            ],
-            slide1: [],
+                    vertices: Array.from({ length: 100 }, (_, i) => {
+                        const angle = (2 * Math.PI * i) / 100;
+                        const radius = 50;
+
+                        return CG.Vector3(
+                            400 + radius * Math.cos(angle),
+                            300 + radius * Math.sin(angle),
+                            1
+                        );
+                    }),
+                    transform: new Matrix(3, 3)
+                 }],
+            slide1: [{
+                vertices: [
+                    CG.Vector3(100, 100, 1),
+                    CG.Vector3(200, 100, 1),
+                    CG.Vector3(200, 200, 1),
+                    CG.Vector3(100, 200, 1)
+                ],
+                transform: new Matrix(3, 3)
+            }, {
+                vertices:[
+                    CG.Vector3(400, 525, 1),
+                    CG.Vector3(425, 450, 1),
+                    CG.Vector3(500, 450, 1),
+                    CG.Vector3(450, 400, 1),
+                    CG.Vector3(475, 325, 1),
+                    
+                    CG.Vector3(400, 375, 1),
+                    CG.Vector3(325, 325, 1),
+                    CG.Vector3(350, 400, 1),
+                    CG.Vector3(300, 450, 1),
+                    CG.Vector3(375, 450, 1)
+                ],
+                transform: new Matrix(3, 3)
+            }, {
+                vertices:[
+                    CG.Vector3(600, 200, 1),
+                    CG.Vector3(700, 100, 1),
+                    CG.Vector3(500, 100, 1)
+                ],
+                transform: new Matrix(3, 3)
+            }],
             slide2: [],
             slide3: []
         };
@@ -85,9 +122,56 @@ class Renderer {
 
     //
     updateTransforms(time, delta_time) {
-        // TODO: update any transformations needed for animation
+        // Slide 0
+        if (this.models.slide0[0].vertices[0].values[0][0] + this.position.x + this.xvelocity * delta_time > this.canvas.width || this.models.slide0[0].vertices[50].values[0][0] + this.position.x + this.xvelocity * delta_time < 0) {
+
+            this.xvelocity = -this.xvelocity;
+            this.color[0] = Math.random() * 255;
+            this.color[1] = Math.random() * 255;
+            this.color[2] = Math.random() * 255;    
+        }
+        if (this.models.slide0[0].vertices[25].values[1][0] + this.position.y + this.yvelocity * delta_time > this.canvas.height || this.models.slide0[0].vertices[75].values[1][0] + this.position.y + this.yvelocity * delta_time < 0) {
+
+            this.yvelocity = -this.yvelocity;
+            this.color[0] = Math.random() * 255;
+            this.color[1] = Math.random() * 255;
+            this.color[2] = Math.random() * 255;   
+        }
+        this.position.x += this.xvelocity * delta_time;
+        this.position.y += this.yvelocity * delta_time;
+        CG.mat3x3Translate(this.models.slide0[0].transform, this.position.x, this.position.y);
+
+        // Slide 1
+
+        // Square rotation
+        this.angularVelocity = 45 * Math.PI / 180 / 1000;
+        let theta = this.angularVelocity * time;
+
+        this.models.slide1[0].transform = this.rotateAround(150, 150, theta);
+
+        // Star Rotation
+        this.angularVelocity = -45 * Math.PI / 180 / 1000;
+        theta = this.angularVelocity * time;
+
+        this.models.slide1[1].transform = this.rotateAround(400, 415, theta);
+
+        // Triangle Rotation
+        this.angularVelocity = 180 * Math.PI / 180 / 1000;
+        theta = this.angularVelocity * time;
+
+        this.models.slide1[2].transform = this.rotateAround(600, 400/3, theta);
     }
-    
+    rotateAround(x, y, theta){
+        let toOrigin = new Matrix(3, 3);
+        let rot = new Matrix(3, 3);
+        let back = new Matrix(3, 3);
+
+        CG.mat3x3Translate(toOrigin, -x, -y);
+        CG.mat3x3Rotate(rot, theta);
+        CG.mat3x3Translate(back, x, y);
+
+        return Matrix.multiply([back, rot, toOrigin]);
+    }
     //
     drawSlide() {
         this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
@@ -110,22 +194,36 @@ class Renderer {
 
     //
     drawSlide0() {
-        // TODO: draw bouncing ball (circle that changes direction whenever it hits an edge)
+        // use blue if you don't want random colors otherwise use this.color for random colors whenever the ball hits the sides
+        // let blue = [65, 105, 255, 255];  
         
-        
-        // Following lines are example of drawing a single polygon
-        // (this should be removed/edited after you implement the slide)
-        let teal = [0, 128, 128, 255];
-        this.drawConvexPolygon(this.models.slide0[0].vertices, teal);
+
+        this.drawConvexPolygon(this.applyTransform(this.models.slide0[0].transform, this.models.slide0[0].vertices), this.color);
+
+    }
+
+    // Takes the transformation matrix and the list of vectors(vertices) and then changes the vectors based on the transformation matrix
+    applyTransform(TransformMatrix, Vertices){
+        let A = []
+
+        for (let i = 0; i < Vertices.length; i++) {
+            A.push(Matrix.multiply([TransformMatrix, Vertices[i]]));
+        }
+
+        return A;
     }
 
     //
     drawSlide1() {
-        // TODO: draw at least 3 polygons that spin about their own centers
-        //   - have each polygon spin at a different speed / direction
-        
-        
+        let blue = [65, 105, 255, 255];  
+        let green = [0, 255, 0, 255];
+        let red = [255, 0, 0, 255];
+
+        this.drawConvexPolygon(this.applyTransform(this.models.slide1[0].transform, this.models.slide1[0].vertices), blue);
+        this.drawConvexPolygon(this.applyTransform(this.models.slide1[1].transform, this.models.slide1[1].vertices), green);
+        this.drawConvexPolygon(this.applyTransform(this.models.slide1[2].transform, this.models.slide1[2].vertices), red);
     }
+
 
     //
     drawSlide2() {
