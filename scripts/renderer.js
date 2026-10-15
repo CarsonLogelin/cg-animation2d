@@ -19,6 +19,14 @@ class Renderer {
         this.yvelocity = .5;
         this.position = { x: 0, y: 0 };
         this.color = [65, 105, 255, 255];
+        this.sqScaleX = 1;
+        this.sqScaleY = 1;
+        this.sqScaleXVelocity = .5;
+        this.sqScaleYVelocity = 1;
+        this.hexScaleX = 1;
+        this.hexScaleY = 1;
+        this.hexScaleXVelocity = .5;
+        this.hexScaleYVelocity = .5;
         this.models = {
             slide0: [
 
@@ -66,8 +74,34 @@ class Renderer {
                 ],
                 transform: new Matrix(3, 3)
             }],
-            slide2: [],
-            slide3: []
+            slide2: [{
+                vertices: [
+                    CG.Vector3(550, 350, 1),
+                    CG.Vector3(550, 250, 1),
+                    CG.Vector3(650, 250, 1),
+                    CG.Vector3(650, 350, 1)
+                ],
+                transform: new Matrix(3, 3)
+            }, {
+                vertices: [
+                    CG.Vector3(150, 375, 1),
+                    CG.Vector3(100, 325, 1),
+                    CG.Vector3(100, 275, 1),
+                    CG.Vector3(150, 225, 1),
+                    CG.Vector3(200, 275, 1),
+                    CG.Vector3(200, 325, 1)
+                ],
+                transform: new Matrix(3, 3)
+            }],
+            slide3: [{
+                vertices: [
+                    CG.Vector3(350, 350, 1),
+                    CG.Vector3(350, 250, 1),
+                    CG.Vector3(450, 250, 1),
+                    CG.Vector3(450, 350, 1)
+                ],
+                transform: new Matrix(3, 3)
+            }]
         };
     }
 
@@ -160,7 +194,38 @@ class Renderer {
         theta = this.angularVelocity * time;
 
         this.models.slide1[2].transform = this.rotateAround(600, 400/3, theta);
+
+        // Slide 2
+        if((this.sqScaleX >= 2 && this.sqScaleXVelocity > 0) || (this.sqScaleX <=0 && this.sqScaleXVelocity < 0)) {
+            this.sqScaleXVelocity *= -1;
+        }
+        if((this.sqScaleY >= 2  && this.sqScaleYVelocity > 0) || (this.sqScaleY <=0  && this.sqScaleYVelocity < 0)) {
+            this.sqScaleYVelocity *= -1;
+        }
+        
+        this.sqScaleX += this.sqScaleXVelocity * delta_time/1000;
+        this.sqScaleY += this.sqScaleYVelocity * delta_time/1000;
+
+        this.models.slide2[0].transform = this.updateTransformsKindOf(600, 300, 0, this.sqScaleX, this.sqScaleY);
+
+        if(this.hexScaleX >= 2 || this.hexScaleX <= .5) {
+            this.hexScaleXVelocity *= -1;
+        }
+        if(this.hexScaleY >= 2 || this.hexScaleY <= .5) {
+            this.hexScaleYVelocity *= -1;
+        }
+        
+        this.hexScaleX += this.hexScaleXVelocity * delta_time/1000;
+        this.hexScaleY += this.hexScaleYVelocity * delta_time/1000;
+
+        this.models.slide2[1].transform = this.updateTransformsKindOf(150, 300, 0, this.hexScaleX, this.hexScaleY);
+
+        //Slide 3
+
+        this.models.slide3[0].transform = this.updateTransformsKindOf(this.position.x, this.position.y, theta, this.sqScaleX, this.sqScaleY);
+
     }
+
     rotateAround(x, y, theta){
         let toOrigin = new Matrix(3, 3);
         let rot = new Matrix(3, 3);
@@ -172,6 +237,21 @@ class Renderer {
 
         return Matrix.multiply([back, rot, toOrigin]);
     }
+
+    updateTransformsKindOf(x, y, theta, sx, sy) {
+        let toOrigin = new Matrix(3, 3);
+        let rot = new Matrix(3, 3);
+        let scale = new Matrix(3, 3);
+        let back = new Matrix(3, 3);
+
+        CG.mat3x3Translate(toOrigin, -x, -y);
+        CG.mat3x3Scale(scale, sx, sy);
+        CG.mat3x3Rotate(rot, theta);
+        CG.mat3x3Translate(back, x, y);
+
+        return Matrix.multiply([back, scale, rot, toOrigin]);
+    }
+    
     //
     drawSlide() {
         this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
@@ -230,8 +310,9 @@ class Renderer {
         // TODO: draw at least 2 polygons grow and shrink about their own centers
         //   - have each polygon grow / shrink different sizes
         //   - try at least 1 polygon that grows / shrinks non-uniformly in the x and y directions
-
-
+        this.drawConvexPolygon(this.applyTransform(this.models.slide2[0].transform, this.models.slide2[0].vertices), [175, 0, 255, 255]);
+        this.drawConvexPolygon(this.applyTransform(this.models.slide2[1].transform, this.models.slide2[1].vertices), [175, 255, 125, 255]);
+        
     }
 
     //
@@ -240,7 +321,7 @@ class Renderer {
         //   - animation should involve all three basic transformation types
         //     (translation, scaling, and rotation)
         
-        
+        this.drawConvexPolygon(this.applyTransform(this.models.slide3[0].transform, this.models.slide3[0].vertices), [175, 0, 255, 255]);
     }
     
     // vertex_list:  array of object [Matrix(3, 1), Matrix(3, 1), ..., Matrix(3, 1)]
