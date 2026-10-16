@@ -27,6 +27,9 @@ class Renderer {
         this.hexScaleY = 1;
         this.hexScaleXVelocity = .5;
         this.hexScaleYVelocity = .5;
+        this.sqXVelocity = 2;
+        this.sqYVelocity = 1;
+        this.sqPosition = { x: 400, y: 300};
         this.models = {
             slide0: [
 
@@ -94,6 +97,14 @@ class Renderer {
                 transform: new Matrix(3, 3)
             }],
             slide3: [{
+                vertices: [
+                    CG.Vector3(350, 350, 1),
+                    CG.Vector3(350, 250, 1),
+                    CG.Vector3(450, 250, 1),
+                    CG.Vector3(450, 350, 1)
+                ],
+                transform: new Matrix(3, 3)
+            }, {
                 vertices: [
                     CG.Vector3(350, 350, 1),
                     CG.Vector3(350, 250, 1),
@@ -221,9 +232,18 @@ class Renderer {
         this.models.slide2[1].transform = this.updateTransformsKindOf(150, 300, 0, this.hexScaleX, this.hexScaleY);
 
         //Slide 3
-
         this.models.slide3[0].transform = this.updateTransformsKindOf(this.position.x, this.position.y, theta, this.sqScaleX, this.sqScaleY);
-
+        if (this.models.slide3[1].vertices[0].values[0][0] + this.sqPosition.x + this.sqXVelocity * delta_time > this.canvas.width || this.models.slide3[1].vertices[2].values[0][0] + this.sqPosition.x + this.sqXVelocity * delta_time < 0) {
+            this.sqXVelocity = -this.sqXVelocity;
+        }
+        if (this.models.slide3[1].vertices[0].values[1][0] + this.sqPosition.y + this.sqYVelocity * delta_time > this.canvas.height || this.models.slide3[1].vertices[1].values[1][0] + this.sqPosition.y + this.sqYVelocity * delta_time < 0) {
+            this.sqYVelocity = -this.sqYVelocity;
+        }
+        this.sqPosition.x += this.sqXVelocity * delta_time;
+        this.sqPosition.y += this.sqYVelocity * delta_time;
+        this.angularVelocity = 120 * Math.PI / 180 / 1000;
+        theta = this.angularVelocity * time;
+        this.models.slide3[1].transform = this.updateTransformsKindOf(this.sqPosition.x, this.sqPosition.y, theta, this.hexScaleX, this.hexScaleY);
     }
 
     rotateAround(x, y, theta){
@@ -322,6 +342,7 @@ class Renderer {
         //     (translation, scaling, and rotation)
         
         this.drawConvexPolygon(this.applyTransform(this.models.slide3[0].transform, this.models.slide3[0].vertices), [175, 0, 255, 255]);
+        this.drawConvexPolygon(this.applyTransform(this.models.slide3[1].transform, this.models.slide3[1].vertices), [255, 0, 175, 255]);
     }
     
     // vertex_list:  array of object [Matrix(3, 1), Matrix(3, 1), ..., Matrix(3, 1)]
